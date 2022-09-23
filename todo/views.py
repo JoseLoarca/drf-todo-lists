@@ -19,3 +19,11 @@ class TodoViewSet(viewsets.ModelViewSet):
         update_parents = todo.update_parents()
 
         return Response(update_parents['response'], status=update_parents['status_code'])
+
+    @action(detail=True, methods=['get'])
+    def status(self, request, pk=None):
+        """ Get the status of a branch """
+        todo = self.get_object()
+        branch_status = todo.get_branch_status()
+
+        return Response(branch_status)
