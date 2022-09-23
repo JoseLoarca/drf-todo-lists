@@ -2,7 +2,6 @@ from django.db import models
 
 
 class Todo(models.Model):
-
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255, null=True, blank=True)
     is_complete = models.BooleanField(null=True, blank=True)
@@ -20,21 +19,25 @@ class Todo(models.Model):
     def __str__(self):
         return "{} - (Is Complete: {}) [{}]".format(self.name, self.is_complete, self.id)
 
-    def get_children(self) -> dict:
+    def get_children(self, direct_descendants: bool = False) -> dict:
         """
         Get all the children for a TODO list
+
+        :param direct_descendants: If True, only the direct descendants will be returned
         """
         result = {'has_children': False, 'children': [], 'all_children_complete': True}
         stack = [self]
         while stack:
             current = stack.pop()
+
             for child in current.children.all():
                 if not child.is_complete:
                     result['all_children_complete'] = False
                 result['has_children'] = True
                 result['children'].append(child)
 
-                stack.append(child)
+                if not direct_descendants:
+                    stack.append(child)
 
         return result
 
@@ -86,3 +89,15 @@ class Todo(models.Model):
             return {'message': 'Todo has no children!'}
 
         return {'response': 'Branch is complete!' if children['all_children_complete'] else 'Branch is not complete!'}
+
+    def mark_as_complete(self) -> None:
+        """
+        Mark a todo as complete, as a result all its direct descendants should be marked as completed
+        """
+        self.is_complete = True
+        self.save()
+
+        children = self.get_children(direct_descendants=True)
+        if children['has_children']:
+            children_ids = [child.id for child in children['children']]
+            Todo.objects.filter(id__in=children_ids).update(is_complete=True)
