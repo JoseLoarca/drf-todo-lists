@@ -57,3 +57,21 @@ class Todo(models.Model):
                     parent_exists = False
 
         return result
+
+    def update_parents(self) -> dict:
+        """
+        Update all its parent status(is_complete field) to be the same as the received TODO.
+        """
+        result = {'response': {'message': 'Todo has no parents!'}, 'status_code': 400}
+
+        parents = self.get_parents()
+
+        if parents['has_parents']:
+            new_status = self.is_complete
+            parents_ids = [parent.id for parent in parents['parents']]
+            Todo.objects.filter(id__in=parents_ids).update(is_complete=new_status)
+
+            result['response'] = {'message': 'Parents updated successfully'}
+            result['status_code'] = 200
+
+        return result
