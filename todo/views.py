@@ -27,3 +27,11 @@ class TodoViewSet(viewsets.ModelViewSet):
         branch_status = todo.get_branch_status()
 
         return Response(branch_status)
+
+    @action(detail=True, methods=['put'])
+    def complete(self, request, pk=None):
+        """ Complete a TODO """
+        todo = self.get_object()
+        todo.mark_as_complete()
+
+        return Response({'message': 'Todo completed successfully!'})
