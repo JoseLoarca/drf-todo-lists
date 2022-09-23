@@ -20,10 +20,40 @@ class Todo(models.Model):
     def __str__(self):
         return "{} - (Is Complete: {}) [{}]".format(self.name, self.is_complete, self.id)
 
-    def print_tree(self):
-        stack = [(self, 1)]
+    def get_children(self) -> dict:
+        """
+        Get all the children for a TODO list
+        """
+        result = {'has_children': False, 'children': [], 'all_children_complete': True}
+        stack = [self]
         while stack:
-            current, depth = stack.pop()
-            print("*" * depth, current)
+            current = stack.pop()
             for child in current.children.all():
-                stack.append((child, depth + 1))
+                if not child.is_complete:
+                    result['all_children_complete'] = False
+                result['has_children'] = True
+                result['children'].append(child)
+
+                stack.append(child)
+
+        return result
+
+    def get_parents(self) -> dict:
+        """
+        Get all the parents for a TODO list
+        """
+        result = {'has_parents': False, 'parents': []}
+
+        if self.parent:
+            result['parents'].append(self.parent)
+            result['has_parents'] = True
+            parent_exists = True
+
+            while parent_exists:
+                current = result['parents'][-1]
+                if current.parent:
+                    result['parents'].append(current.parent)
+                else:
+                    parent_exists = False
+
+        return result
