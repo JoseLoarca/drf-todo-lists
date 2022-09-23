@@ -8,7 +8,7 @@ class Todo(models.Model):
     parent = models.ForeignKey(
         'Todo',
         related_name='children',
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         blank=True
     )
