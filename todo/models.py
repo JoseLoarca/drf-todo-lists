@@ -75,3 +75,14 @@ class Todo(models.Model):
             result['status_code'] = 200
 
         return result
+
+    def get_branch_status(self) -> dict:
+        """
+        For a branch to be complete, all the children TODO should be complete.
+        """
+        children = self.get_children()
+
+        if not children['has_children']:
+            return {'message': 'Todo has no children!'}
+
+        return {'response': 'Branch is complete!' if children['all_children_complete'] else 'Branch is not complete!'}
