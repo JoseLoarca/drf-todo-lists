@@ -12,7 +12,6 @@ from rest_framework.test import APIClient
 from ..models import Todo
 from .factories import TodoFactory, CompleteTodoFactory, IncompleteTodoFactory
 
-
 faker = Factory.create()
 
 class InterviewTodoListFactory():
@@ -81,3 +80,69 @@ class Interview_Test(TestCase):
         direct_descendants = root_list.get_children(direct_descendants=True)
         assert direct_descendants['has_children'] is True
         assert len(direct_descendants['children']) == 2
+
+    def test_children_cascade_delete(self) -> None:
+        """
+        Ensure (using DELETE request) all children get deleted when a todo is removed
+        """
+        todo_b = Todo.objects.get(name="TODO B")
+        self.api_client.delete(reverse('todo-detail', kwargs={'pk': todo_b.id}))
+        assert Todo.objects.filter(name="TODO B").count() == 0
+        assert Todo.objects.filter(name="TODO B1").count() == 0
+        assert Todo.objects.filter(name="TODO B2").count() == 0
+
+        root_list = self.todo_list
+        self.api_client.delete(reverse('todo-detail', kwargs={'pk': root_list.id}))
+        assert Todo.objects.all().count() == 0
+
+    def test_branch_completion(self) -> None:
+        """
+        Ensure all direct descendants get marked as complete when using the "complete" endpoint
+        """
+        todo_a3 = Todo.objects.get(name="TODO A3")
+        self.api_client.put(reverse('todo-complete', kwargs={'pk': todo_a3.id}))
+        assert Todo.objects.filter(name="TODO A3", is_complete=1).count() == 1
+        assert Todo.objects.filter(name="TODO A3.1", is_complete=1).count() == 1
+        assert Todo.objects.filter(name="TODO A3.2", is_complete=1).count() == 1
+
+        root_list = self.todo_list
+        self.api_client.put(reverse('todo-complete', kwargs={'pk': root_list.id}))
+        assert Todo.objects.filter(name="TODO A", is_complete=1).count() == 1
+        assert Todo.objects.filter(name="TODO B", is_complete=1).count() == 1
+
+    def test_branch_status(self) -> None:
+        """
+        Ensure the status of a branch is returned correctly
+        """
+        todo_a1 = Todo.objects.get(name="TODO A1")
+        res = self.api_client.get(reverse('todo-status', kwargs={'pk': todo_a1.id}))
+        assert res.status_code == 200
+        assert res.data['message'] == 'Todo has no children!'
+
+        todo_a3 = Todo.objects.get(name="TODO A3")
+        res = self.api_client.get(reverse('todo-status', kwargs={'pk': todo_a3.id}))
+        assert res.status_code == 200
+        assert res.data['message'] == 'Branch is not complete!'
+
+        todo_b = Todo.objects.get(name="TODO B")
+        res = self.api_client.get(reverse('todo-status', kwargs={'pk': todo_b.id}))
+        assert res.status_code == 200
+        assert res.data['message'] == 'Branch is complete!'
+
+    def test_parent_update(self) -> None:
+        """
+        Test the endpoint to update all parents status
+        """
+        root_list = self.todo_list
+        res = self.api_client.put(reverse('todo-parents', kwargs={'pk': root_list.id}))
+        assert res.status_code == 400
+        assert res.data['message'] == 'Todo has no parents!'
+
+        todo_a1 = Todo.objects.get(name="TODO A1")
+        res = self.api_client.put(reverse('todo-parents', kwargs={'pk': todo_a1.id}))
+        assert res.status_code == 200
+        assert res.data['message'] == 'Parents updated successfully'
+        todo_a = Todo.objects.get(name="TODO A")
+        assert todo_a.is_complete == 1
+        root_list = Todo.objects.get(name="TODO List")
+        assert root_list.is_complete == 1
