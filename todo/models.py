@@ -88,7 +88,7 @@ class Todo(models.Model):
         if not children['has_children']:
             return {'message': 'Todo has no children!'}
 
-        return {'response': 'Branch is complete!' if children['all_children_complete'] else 'Branch is not complete!'}
+        return {'message': 'Branch is complete!' if children['all_children_complete'] else 'Branch is not complete!'}
 
     def mark_as_complete(self) -> None:
         """
